@@ -18,7 +18,7 @@ def multivariate_gaussian(x, meu, cov):
 	try:
 		val /= np.sqrt(((2*np.pi)**12)*det)
 	except:
-		print 'Matrix is not positive, semi-definite'
+		print('Matrix is not positive, semi-definite')
 	if np.isnan(val):
 		val = np.finfo(float).eps
 	return val
@@ -80,9 +80,9 @@ def initialize(chroma, templates, nested_cof):
 
 		#filling non zero diagonals
 		for j in range(12):
-	 		if cov_mat[i,j,j] == 0:
-	 			cov_mat[i,j,j] = 0.2
-	 	offset += 1
+			if cov_mat[i,j,j] == 0:
+				cov_mat[i,j,j] = 0.2
+		offset += 1
 	
 
 	"""observation matrix B is a multivariate Gaussian calculated from mean vector and 
@@ -113,85 +113,81 @@ def viterbi(PI,A,B):
 	
 	return (path,states)
 
-
-
-"""read from JSON file to get chord templates"""
-
-with open('chord_templates.json', 'r') as fp:
-	templates_json = json.load(fp)
-
-chords = ['G','G#','A','A#','B','C','C#','D','D#','E','F','F#','Gm','G#m','Am','A#m','Bm','Cm','C#m','Dm','D#m','Em','Fm','F#m']
-nested_cof = ['G','Bm','D','F#m','A','C#m','E','G#m','B','D#m','F#','A#m','C#',"Fm","G#",'Cm','D#','Gm','A#','Dm','F','Am','C','Em']
-templates = []
-
-for chord in chords:
-	templates.append(templates_json[chord])
-
-"""read audio and compute chromagram"""
-directory = os.getcwd() + '/test_chords/';
-fname = 'Grand Piano - Fazioli - minor chords - Am higher.wav';
-(fs,s) = read(directory + fname)
-
-
-#reduce sample rate and convert to mono
-x = s[::4]
-x = x[:,1]
-fs = int(fs/4)
-
-#framing audio 
-nfft = 8192
-hop_size = 1024
-nFrames = int(np.round(len(x)/(nfft-hop_size)))
-
-#zero padding to make signal length long enough to have nFrames
-x = np.append(x, np.zeros(nfft))
-xFrame = np.empty((nfft, nFrames))
-start = 0   
-chroma = np.empty((12,nFrames)) 
-timestamp = np.zeros(nFrames)
-
-#compute PCP
-for n in range(nFrames):
-	xFrame[:,n] = x[start:start+nfft] 
-	start = start + nfft - hop_size 
-	chroma[:,n] = compute_chroma(xFrame[:,n],fs)
-	if  np.all(chroma[:,n] == 0):
-		chroma[:,n] = np.finfo(float).eps
-	else:
-		chroma[:,n] /= np.max(np.absolute(chroma[:,n]))
-	timestamp[n] = n*(nfft-hop_size)/fs 
-
-
-#get max probability path from Viterbi algorithm
-(PI,A,B) = initialize(chroma, templates, nested_cof)
-(path, states) = viterbi(PI,A,B)
-
-#normalize path
-for i in range(nFrames):
-	path[:,i] /= sum(path[:,i])
-
-#choose most likely chord - with max value in 'path'
-final_chords = []
-indices = np.argmax(path,axis=0)
-final_states = np.zeros(nFrames)
-
-
-#find no chord zone
-set_zero = np.where(np.max(path,axis=0) < 0.3*np.max(path))[0]
-if np.size(set_zero) is not 0:
-	indices[set_zero] = -1
-
-#identify chords
-for i in range(nFrames):
-	if indices[i] == -1:
-		final_chords.append('NC')
-	else:
-		final_states[i] = states[indices[i],i]
-		final_chords.append(chords[int(final_states[i])])
-
-print 'Time(s)','Chords'
-for i in range(nFrames):
-	print timestamp[i], final_chords[i]
-
-
-
+if __name__ == "__main__":
+    """read from JSON file to get chord templates"""
+    
+    with open('chord_templates.json', 'r') as fp:
+    	templates_json = json.load(fp)
+    
+    chords = ['G','G#','A','A#','B','C','C#','D','D#','E','F','F#','Gm','G#m','Am','A#m','Bm','Cm','C#m','Dm','D#m','Em','Fm','F#m']
+    nested_cof = ['G','Bm','D','F#m','A','C#m','E','G#m','B','D#m','F#','A#m','C#',"Fm","G#",'Cm','D#','Gm','A#','Dm','F','Am','C','Em']
+    templates = []
+    
+    for chord in chords:
+    	templates.append(templates_json[chord])
+    
+    """read audio and compute chromagram"""
+    directory = os.getcwd() + '/test_chords/';
+    fname = 'Grand Piano - Fazioli - minor chords - Am higher.wav';
+    (fs,s) = read(directory + fname)
+    
+    
+    #reduce sample rate and convert to mono
+    x = s[::4]
+    x = x[:,1]
+    fs = int(fs/4)
+    
+    #framing audio 
+    nfft = 8192
+    hop_size = 1024
+    nFrames = int(np.round(len(x)/(nfft-hop_size)))
+    
+    #zero padding to make signal length long enough to have nFrames
+    x = np.append(x, np.zeros(nfft))
+    xFrame = np.empty((nfft, nFrames))
+    start = 0   
+    chroma = np.empty((12,nFrames)) 
+    timestamp = np.zeros(nFrames)
+    
+    #compute PCP
+    for n in range(nFrames):
+    	xFrame[:,n] = x[start:start+nfft] 
+    	start = start + nfft - hop_size 
+    	chroma[:,n] = compute_chroma(xFrame[:,n],fs)
+    	if  np.all(chroma[:,n] == 0):
+    		chroma[:,n] = np.finfo(float).eps
+    	else:
+    		chroma[:,n] /= np.max(np.absolute(chroma[:,n]))
+    	timestamp[n] = n*(nfft-hop_size)/fs 
+    
+    
+    #get max probability path from Viterbi algorithm
+    (PI,A,B) = initialize(chroma, templates, nested_cof)
+    (path, states) = viterbi(PI,A,B)
+    
+    #normalize path
+    for i in range(nFrames):
+    	path[:,i] /= sum(path[:,i])
+    
+    #choose most likely chord - with max value in 'path'
+    final_chords = []
+    indices = np.argmax(path,axis=0)
+    final_states = np.zeros(nFrames)
+    
+    
+    #find no chord zone
+    set_zero = np.where(np.max(path,axis=0) < 0.3*np.max(path))[0]
+    if np.size(set_zero) != 0:
+    	indices[set_zero] = -1
+    
+    #identify chords
+    for i in range(nFrames):
+    	if indices[i] == -1:
+    		final_chords.append('NC')
+    	else:
+    		final_states[i] = states[indices[i],i]
+    		final_chords.append(chords[int(final_states[i])])
+    
+    print('Time(s)','Chords')
+    for i in range(nFrames):
+    	print(timestamp[i], final_chords[i])

@@ -19,11 +19,11 @@ def nearestPow2(inp):
 def HPS(dft,M):
 
 	hps_len = int(np.ceil(np.size(dft)/(2**M)))
- 	hps = np.ones(hps_len)
- 	for n in range(hps_len):
- 		for m in range(M+1): 
- 			hps[n] *= np.absolute(dft[(2**m)*n])
- 	return hps	
+	hps = np.ones(hps_len)
+	for n in range(hps_len):
+		for m in range(M+1): 
+			hps[n] *= np.absolute(dft[(2**m)*n])
+	return hps	
 
 
 """Function to compute CQT using sparse matrix multiplication, Brown and Puckette 1992- fast"""	
