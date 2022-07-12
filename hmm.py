@@ -9,6 +9,8 @@ from scipy.io.wavfile import read
 import numpy as np 
 import json
 
+CHORDS = ['G','G#','A','A#','B','C','C#','D','D#','E','F','F#','Gm','G#m','Am','A#m','Bm','Cm','C#m','Dm','D#m','Em','Fm','F#m']
+NESTED_COF = ['G','Bm','D','F#m','A','C#m','E','G#m','B','D#m','F#','A#m','C#',"Fm","G#",'Cm','D#','Gm','A#','Dm','F','Am','C','Em']
 
 """calculates multivariate gaussian matrix from mean and covariance matrices"""
 def multivariate_gaussian(x, meu, cov):
@@ -26,7 +28,7 @@ def multivariate_gaussian(x, meu, cov):
 
 """initialize the emission, transition and initialisation matrices for HMM in chord recognition
 PI - initialisation matrix, #A - transition matrix, #B - observation matrix"""
-def initialize(chroma, templates, nested_cof):
+def initialize(chroma, templates, NESTED_COF):
 
 	"""initialising PI with equal probabilities"""
 	PI = np.ones(24)/24
@@ -34,8 +36,8 @@ def initialize(chroma, templates, nested_cof):
 	"""initialising A based on nested circle of fifths"""
 	eps = 0.01
 	A = np.empty((24,24))
-	for chord in chords:
-		ind = nested_cof.index(chord)
+	for chord in CHORDS:
+		ind = NESTED_COF.index(chord)
 		t = ind
 		for i in range(24):
 			if t >= 24:
@@ -114,23 +116,27 @@ def viterbi(PI,A,B):
 	return (path,states)
 
 if __name__ == "__main__":
-    """read from JSON file to get chord templates"""
+    import sys
+    import csv
+
+    #fft size and windowing size
+    NFFT = 8192
+    HOP_SIZE = 1024
+
+    RESULT_DIRECTORY = './'
+    FILENAME = sys.argv[1]
+    FILEBASENAME = os.path.splitext(os.path.basename(FILENAME))[0]
     
     with open('chord_templates.json', 'r') as fp:
     	templates_json = json.load(fp)
     
-    chords = ['G','G#','A','A#','B','C','C#','D','D#','E','F','F#','Gm','G#m','Am','A#m','Bm','Cm','C#m','Dm','D#m','Em','Fm','F#m']
-    nested_cof = ['G','Bm','D','F#m','A','C#m','E','G#m','B','D#m','F#','A#m','C#',"Fm","G#",'Cm','D#','Gm','A#','Dm','F','Am','C','Em']
     templates = []
     
-    for chord in chords:
+    for chord in CHORDS:
     	templates.append(templates_json[chord])
     
     """read audio and compute chromagram"""
-    directory = os.getcwd() + '/test_chords/';
-    fname = 'Grand Piano - Fazioli - minor chords - Am higher.wav';
-    (fs,s) = read(directory + fname)
-    
+    (fs,s) = read(FILENAME)
     
     #reduce sample rate and convert to mono
     x = s[::4]
@@ -138,31 +144,29 @@ if __name__ == "__main__":
     fs = int(fs/4)
     
     #framing audio 
-    nfft = 8192
-    hop_size = 1024
-    nFrames = int(np.round(len(x)/(nfft-hop_size)))
+    nFrames = int(np.round(len(x)/(NFFT-HOP_SIZE)))
     
     #zero padding to make signal length long enough to have nFrames
-    x = np.append(x, np.zeros(nfft))
-    xFrame = np.empty((nfft, nFrames))
+    x = np.append(x, np.zeros(NFFT))
+    xFrame = np.empty((NFFT, nFrames))
     start = 0   
     chroma = np.empty((12,nFrames)) 
     timestamp = np.zeros(nFrames)
     
     #compute PCP
     for n in range(nFrames):
-    	xFrame[:,n] = x[start:start+nfft] 
-    	start = start + nfft - hop_size 
+    	xFrame[:,n] = x[start:start+NFFT] 
+    	start = start + NFFT - HOP_SIZE 
     	chroma[:,n] = compute_chroma(xFrame[:,n],fs)
     	if  np.all(chroma[:,n] == 0):
     		chroma[:,n] = np.finfo(float).eps
     	else:
     		chroma[:,n] /= np.max(np.absolute(chroma[:,n]))
-    	timestamp[n] = n*(nfft-hop_size)/fs 
+    	timestamp[n] = n*(NFFT-HOP_SIZE)/fs 
     
     
     #get max probability path from Viterbi algorithm
-    (PI,A,B) = initialize(chroma, templates, nested_cof)
+    (PI,A,B) = initialize(chroma, templates, NESTED_COF)
     (path, states) = viterbi(PI,A,B)
     
     #normalize path
@@ -186,8 +190,14 @@ if __name__ == "__main__":
     		final_chords.append('NC')
     	else:
     		final_states[i] = states[indices[i],i]
-    		final_chords.append(chords[int(final_states[i])])
+    		final_chords.append(CHORDS[int(final_states[i])])
     
     print('Time(s)','Chords')
     for i in range(nFrames):
     	print(timestamp[i], final_chords[i])
+
+    #csv output
+    with open(os.path.join(RESULT_DIRECTORY, FILEBASENAME + "_chords.csv"), 'w') as f:
+        writer = csv.writer(f, lineterminator='\n')
+        for i in range(nFrames):
+            writer.writerow([timestamp[i], final_chords[i]])
