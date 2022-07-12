@@ -4,10 +4,7 @@
 
 from __future__ import division
 from chromagram import compute_chroma
-import os
-from scipy.io.wavfile import read
 import numpy as np 
-import json
 
 CHORDS = ['G','G#','A','A#','B','C','C#','D','D#','E','F','F#','Gm','G#m','Am','A#m','Bm','Cm','C#m','Dm','D#m','Em','Fm','F#m']
 NESTED_COF = ['G','Bm','D','F#m','A','C#m','E','G#m','B','D#m','F#','A#m','C#',"Fm","G#",'Cm','D#','Gm','A#','Dm','F','Am','C','Em']
@@ -118,6 +115,9 @@ def viterbi(PI,A,B):
 if __name__ == "__main__":
     import sys
     import csv
+    import json
+    import os
+    from scipy.io.wavfile import read
 
     #fft size and windowing size
     NFFT = 8192
