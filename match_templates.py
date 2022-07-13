@@ -44,11 +44,10 @@ if __name__ == "__main__":
     """read audio and compute chromagram"""
     (fs,s) = read(FILENAME)
     
-    #reduce sample rate and convert to mono
-    x = s[::4]
+    #convert to mono
+    x = s.copy()
     if len(x.shape) > 1:
         x = x[:,1]
-    fs = int(fs/4)
     
     #framing audio, omputing PCP
     nFrames = int(np.round(len(x)/(NFFT-HOP_SIZE)))
