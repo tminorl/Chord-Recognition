@@ -140,7 +140,8 @@ if __name__ == "__main__":
     
     #reduce sample rate and convert to mono
     x = s[::4]
-    x = x[:,1]
+    if len(x.shape) > 1:
+        x = x[:,1]
     fs = int(fs/4)
     
     #framing audio 
